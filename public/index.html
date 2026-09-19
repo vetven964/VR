@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Forex Signal → Telegram Dashboard</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="screen">
+    <div class="login-card">
+      <div class="logo">📡</div>
+      <h1>Signal Telegram Bot</h1>
+      <p class="subtitle">Dashboard គ្រប់គ្រង Forex Signal</p>
+      <input id="passwordInput" type="password" placeholder="ពាក្យសម្ងាត់ (Password)" autocomplete="current-password" />
+      <button id="loginBtn">ចូលប្រើប្រាស់</button>
+      <p id="loginError" class="error-text"></p>
+    </div>
+  </div>
+
+  <!-- DASHBOARD SCREEN -->
+  <div id="dashboardScreen" class="screen hidden">
+    <header>
+      <div class="header-left">
+        <span class="logo-small">📡</span>
+        <h2>Signal Dashboard</h2>
+      </div>
+      <button id="logoutBtn" class="btn-ghost">ចាកចេញ</button>
+    </header>
+
+    <main>
+      <section class="card form-card">
+        <h3>➕ បង្កើត Signal ថ្មី</h3>
+        <form id="signalForm">
+          <div class="row">
+            <div class="field">
+              <label>Pair</label>
+              <input id="pair" type="text" placeholder="ឧ. XAUUSD, EURUSD" required />
+            </div>
+            <div class="field">
+              <label>Direction</label>
+              <div class="direction-toggle">
+                <button type="button" class="dir-btn buy active" data-dir="BUY">🟢 BUY</button>
+                <button type="button" class="dir-btn sell" data-dir="SELL">🔴 SELL</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Entry Price</label>
+              <input id="entry" type="text" placeholder="ឧ. 1985.50" required />
+            </div>
+            <div class="field">
+              <label>Stop Loss</label>
+              <input id="sl" type="text" placeholder="ឧ. 1980.00" required />
+            </div>
+          </div>
+
+          <div class="row three">
+            <div class="field">
+              <label>TP1</label>
+              <input id="tp1" type="text" placeholder="ស្រេចចិត្ត" />
+            </div>
+            <div class="field">
+              <label>TP2</label>
+              <input id="tp2" type="text" placeholder="ស្រេចចិត្ត" />
+            </div>
+            <div class="field">
+              <label>TP3</label>
+              <input id="tp3" type="text" placeholder="ស្រេចចិត្ត" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label>កំណត់ចំណាំ (Note)</label>
+            <textarea id="note" rows="2" placeholder="ស្រេចចិត្ត..."></textarea>
+          </div>
+
+          <button type="submit" id="submitBtn" class="btn-primary">🚀 ផ្ញើ Signal ទៅ Telegram</button>
+          <p id="formMessage" class="form-message"></p>
+        </form>
+      </section>
+
+      <section class="card fvg-card">
+        <div class="fvg-header">
+          <h3>🤖 Auto-Scan FVG</h3>
+          <label class="switch">
+            <input type="checkbox" id="autoScanToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <p class="fvg-desc">ស្កេនរក Fair Value Gap ដោយស្វ័យប្រវត្តិ រួចផ្ញើទៅ Telegram ភ្លាមៗពេលរកឃើញ</p>
+
+        <div class="row">
+          <div class="field">
+            <label>Pairs (ខណ្ឌដោយសញ្ញា Comma)</label>
+            <input id="fvgPairs" type="text" placeholder="EURUSD, GBPUSD, XAUUSD" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Timeframe</label>
+            <select id="fvgTimeframe">
+              <option value="5min">5 នាទី</option>
+              <option value="15min">15 នាទី</option>
+              <option value="30min">30 នាទី</option>
+              <option value="1h">1 ម៉ោង</option>
+              <option value="4h">4 ម៉ោង</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>ស្កេនរៀងរាល់ (នាទី)</label>
+            <input id="fvgInterval" type="number" min="5" placeholder="15" />
+          </div>
+        </div>
+
+        <div class="fvg-actions">
+          <button id="saveSettingsBtn" class="btn-primary small-btn">💾 រក្សាទុក</button>
+          <button id="scanNowBtn" class="btn-ghost">⚡ ស្កេនឥឡូវនេះ</button>
+        </div>
+        <p id="fvgMessage" class="form-message"></p>
+      </section>
+
+      <section class="card history-card">
+        <div class="history-header">
+          <h3>🕘 ប្រវត្តិ Signal</h3>
+          <button id="refreshBtn" class="btn-ghost small">↻ ផ្ទុកឡើងវិញ</button>
+        </div>
+        <div id="historyList" class="history-list">
+          <p class="empty-state">មិនទាន់មាន Signal ទេ</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
