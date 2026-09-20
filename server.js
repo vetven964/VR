@@ -40,6 +40,9 @@ const DEFAULT_SETTINGS = {
   pairs: ['EURUSD', 'GBPUSD', 'XAUUSD'],
   timeframe: '15min',
   intervalMinutes: 15,
+  dataSource: 'twelvedata', // 'twelvedata' | 'metaapi'
+  minGapPercent: 0.1, // skip gaps smaller than this % of price (noise filter)
+  cooldownMinutes: 60, // minimum gap between two auto-signals for the same pair
 };
 
 function loadSettings() {
@@ -65,6 +68,17 @@ function requireAuth(req, res, next) {
   const token = req.headers['x-auth-token'];
   if (token && activeSessions.has(token)) return next();
   return res.status(401).json({ error: 'Unauthorized. សូមចូលប្រើម្ដងទៀត។' });
+}
+
+// A pair entry can optionally override the data source for just that pair,
+// written as "SYMBOL:source" — e.g. "GC=F:yahoo" while the rest use
+// Twelve Data. Falls back to the global settings.dataSource otherwise.
+function parsePairEntry(entry) {
+  const [symbolRaw, sourceRaw] = String(entry).split(':');
+  return {
+    symbol: symbolRaw.trim().toUpperCase(),
+    source: sourceRaw ? sourceRaw.trim().toLowerCase() : null,
+  };
 }
 
 // ---------- Telegram message builders ----------
@@ -96,6 +110,7 @@ function buildFvgMessage(signal, fvg) {
     `💱 *Pair:* ${signal.pair}`,
     `${dirLabel}`,
     `⏱ *Timeframe:* ${signal.timeframe}`,
+    `📶 *Feed:* ${signal.dataSource === 'metaapi' ? 'MT5 Broker (MetaApi)' : signal.dataSource === 'yahoo' ? 'Yahoo Finance (Unofficial)' : 'Twelve Data'}`,
     `📐 *Gap Zone:* ${fvg.gapBottom} — ${fvg.gapTop}`,
     ``,
     `🕒 ${new Date(signal.createdAt).toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh' })}`,
@@ -129,25 +144,54 @@ async function sendToTelegram(text) {
 // ---------- Auto FVG scan engine ----------
 // Dedupe key set, seeded from history so a restart doesn't resend old FVGs.
 const seenFvgKeys = new Set();
-(function seedSeenKeys() {
+// Last auto-signal time per pair, for cooldown throttling.
+const lastSentAt = {};
+(function seedScanState() {
   loadSignals().forEach((s) => {
     if (s.source === 'auto-fvg' && s.fvgKey) seenFvgKeys.add(s.fvgKey);
+    if (s.source === 'auto-fvg' && s.status === 'sent') {
+      if (!lastSentAt[s.pair] || s.createdAt > lastSentAt[s.pair]) {
+        lastSentAt[s.pair] = s.createdAt;
+      }
+    }
   });
 })();
 
 async function runAutoScan() {
   const settings = loadSettings();
-  if (!settings.autoScanEnabled) return { scanned: 0, found: 0 };
+  if (!settings.autoScanEnabled) return { scanned: 0, found: 0, skipped: 0 };
 
   let found = 0;
-  for (const pair of settings.pairs) {
+  let skipped = 0;
+  const cooldownMs = (settings.cooldownMinutes || 0) * 60 * 1000;
+
+  for (const rawPair of settings.pairs) {
+    const { symbol: pair, source: pairSourceOverride } = parsePairEntry(rawPair);
+    const effectiveSource = pairSourceOverride || settings.dataSource;
     try {
-      const candles = await fetchCandles(pair, settings.timeframe, 30);
+      const candles = await fetchCandles(pair, settings.timeframe, 30, effectiveSource);
       const fvg = detectLatestFVG(candles);
       if (!fvg) continue;
 
       const key = `${pair}_${fvg.time}_${fvg.type}`;
       if (seenFvgKeys.has(key)) continue;
+
+      // Filter 1: gap must be at least minGapPercent of price (skip noise)
+      const gapPercent = ((fvg.gapTop - fvg.gapBottom) / fvg.gapBottom) * 100;
+      if (settings.minGapPercent && gapPercent < settings.minGapPercent) {
+        seenFvgKeys.add(key); // still mark seen so we don't re-check it every cycle
+        skipped++;
+        continue;
+      }
+
+      // Filter 2: cooldown — don't spam the same pair too often
+      const now = Date.now();
+      if (cooldownMs > 0 && lastSentAt[pair] && now - lastSentAt[pair] < cooldownMs) {
+        seenFvgKeys.add(key);
+        skipped++;
+        continue;
+      }
+
       seenFvgKeys.add(key);
       found++;
 
@@ -160,18 +204,20 @@ async function runAutoScan() {
         tp1: '',
         tp2: '',
         tp3: '',
-        note: `FVG ${fvg.type} zone: ${fvg.gapBottom} – ${fvg.gapTop}`,
+        note: `FVG ${fvg.type} zone: ${fvg.gapBottom} – ${fvg.gapTop} (${gapPercent.toFixed(2)}%)`,
         createdAt: Date.now(),
         status: 'pending',
         source: 'auto-fvg',
         fvgKey: key,
         timeframe: settings.timeframe,
+        dataSource: effectiveSource,
       };
 
       const message = buildFvgMessage(signal, fvg);
       try {
         await sendToTelegram(message);
         signal.status = 'sent';
+        lastSentAt[pair] = signal.createdAt;
       } catch (err) {
         signal.status = 'failed';
         signal.error = err.message;
@@ -184,7 +230,7 @@ async function runAutoScan() {
       console.error(`⚠️  FVG scan error for ${pair}:`, err.message);
     }
   }
-  return { scanned: settings.pairs.length, found };
+  return { scanned: settings.pairs.length, found, skipped };
 }
 
 let scanTimer = null;
@@ -282,15 +328,23 @@ app.get('/api/settings', requireAuth, (req, res) => {
 });
 
 app.post('/api/settings', requireAuth, (req, res) => {
-  const { autoScanEnabled, pairs, timeframe, intervalMinutes } = req.body || {};
+  const { autoScanEnabled, pairs, timeframe, intervalMinutes, dataSource, minGapPercent, cooldownMinutes } = req.body || {};
   const settings = loadSettings();
 
   if (typeof autoScanEnabled === 'boolean') settings.autoScanEnabled = autoScanEnabled;
   if (Array.isArray(pairs) && pairs.length) {
-    settings.pairs = pairs.map((p) => String(p).toUpperCase().trim()).filter(Boolean);
+    settings.pairs = pairs
+      .map((p) => {
+        const { symbol, source } = parsePairEntry(p);
+        return symbol ? (source ? `${symbol}:${source}` : symbol) : null;
+      })
+      .filter(Boolean);
   }
   if (timeframe) settings.timeframe = String(timeframe);
   if (intervalMinutes) settings.intervalMinutes = Math.max(5, parseInt(intervalMinutes, 10));
+  if (dataSource && ['twelvedata', 'metaapi', 'yahoo'].includes(dataSource)) settings.dataSource = dataSource;
+  if (minGapPercent !== undefined && minGapPercent !== '') settings.minGapPercent = Math.max(0, parseFloat(minGapPercent));
+  if (cooldownMinutes !== undefined && cooldownMinutes !== '') settings.cooldownMinutes = Math.max(0, parseInt(cooldownMinutes, 10));
 
   saveSettings(settings);
   scheduleScan();

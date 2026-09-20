@@ -34,6 +34,39 @@ Web App សម្រាប់វាយបញ្ចូល Forex Trading Signal �
 
 ---
 
+## ជំហានទី ១.៦៖ (ស្រេចចិត្ត) ចង់បានតម្លៃដូច MT5 Broker បង 100%
+
+លំនាំដើម App ប្រើ **Twelve Data** ជា Data Source ដែលជាទិន្នន័យទីផ្សារទូទៅ — អាចខុសបន្តិចពី Broker MT5 របស់បង (Spread ខុសគ្នា)។ ប្រសិនបើចង់ឲ្យតម្លៃត្រូវគ្នា **100%** ជាមួយ Broker Account ជាក់ស្តែង អាចប្រើ **MetaApi.cloud** ជំនួសវិញ (ឥតគិតថ្លៃសម្រាប់ 1 Account)៖
+
+1. ចូល [app.metaapi.cloud](https://app.metaapi.cloud) → Sign up ឥតគិតថ្លៃ
+2. **Add Trading Account** → បំពេញ Login, Password, Server ដូចដែលបងប្រើចូល MT5 (ព័ត៌មានពី Broker របស់បង)
+3. រង់ចាំ ១-២នាទីអោយ MetaApi ភ្ជាប់ (Deploy) Cloud Terminal ទៅ Broker Account របស់បង
+4. ចម្លង **API Token** (ពី Settings → API Keys) និង **Account ID** (ពីទំព័រ Account) ដាក់ក្នុង `.env`:
+   ```
+   METAAPI_TOKEN=...
+   METAAPI_ACCOUNT_ID=...
+   METAAPI_REGION=new-york   (ឬតំបន់ផ្សេងបើមានបង្ហាញនៅ Account page)
+   ```
+5. នៅ Dashboard → Card "🤖 Auto-Scan FVG" → ប្តូរ **"ប្រភពទិន្នន័យតម្លៃ"** ទៅ **"MT5 Broker តាម MetaApi"**
+6. **សំខាន់៖** Pair ដែលបងវាយក្នុង Dashboard (ឧ. `EURUSD`) ត្រូវតែដូចទៅនឹង **ឈ្មោះ Symbol ពិតប្រាកដក្នុង MT5** របស់បង (Broker ខ្លះមាន Suffix ដូចជា `EURUSDm`, `EURUSD.` — ត្រូវពិនិត្យក្នុង Market Watch របស់ MT5 ជាមុន)
+
+**ចំណាំ:** Free tier របស់ MetaApi ផ្តល់សម្រាប់ **1 MT5 Account** តែប៉ុណ្ណោះ — គ្រប់គ្រាន់សម្រាប់ Broker Account មួយ។
+
+---
+
+## ជំហានទី ១.៧៖ (ស្រេចចិត្ត) Gold Futures (CME GC=F) តាម Yahoo Finance
+
+ចង់បន្ថែម **Gold Futures** (ដូចប្រភេទនៅលើ CMEGroup.com) ចូល Dashboard/Telegram ដោយឥតគិតថ្លៃ អាចធ្វើបានតាម Yahoo Finance's public chart API។
+
+⚠️ **សំខាន់៖** នេះជា **Unofficial API** (Yahoo មិនបានផ្តល់ជា Product ផ្លូវការ) — មិនមែនជា Data ផ្លូវការពី CME Group ទេ។ វាអាចឈប់ដំណើរការ ឬត្រូវបាន Block ដោយគ្មានការជូនដំណឹងជាមុន។ សម្រាប់ Data ផ្លូវការ ត្រូវការ License បង់ប្រាក់ពី CME Market Data / DataMine។
+
+**របៀបប្រើ៖**
+1. នៅ Card "🤖 Auto-Scan FVG" → Field **Pairs** បន្ថែម `GC=F:yahoo` ខណៈពេលដែល Pair ផ្សេងទៀតនៅតែប្រើប្រភពលំនាំដើម (ឧ. `EURUSD, GBPUSD, GC=F:yahoo`)
+2. ការសរសេរ `:yahoo` ខាងក្រោយ Symbol មានន័យថា Pair នោះនឹងប្រើ Yahoo Finance ជំនួសឲ្យប្រភពទិន្នន័យសកលដែលបានកំណត់លើ Dropdown
+3. Ticker ផ្សេងទៀតដែលអាចប្រើតាម Yahoo: `SI=F` (Silver), `CL=F` (Crude Oil), `GC=F` (Gold) — ត្រូវប្រើទម្រង់ដូចលើ [finance.yahoo.com](https://finance.yahoo.com) ខ្លួនឯង
+
+---
+
 ## ជំហានទី ២៖ Setup នៅលើកុំព្យូទ័រ (សាកល្បង)
 
 ```bash
