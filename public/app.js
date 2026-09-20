@@ -194,6 +194,7 @@ const fvgTimeframe = document.getElementById('fvgTimeframe');
 const fvgInterval = document.getElementById('fvgInterval');
 const fvgMinGap = document.getElementById('fvgMinGap');
 const fvgCooldown = document.getElementById('fvgCooldown');
+const fvgSlBuffer = document.getElementById('fvgSlBuffer');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const scanNowBtn = document.getElementById('scanNowBtn');
 const fvgMessage = document.getElementById('fvgMessage');
@@ -210,6 +211,7 @@ async function loadSettings() {
     fvgInterval.value = settings.intervalMinutes || 15;
     fvgMinGap.value = settings.minGapPercent ?? 0.1;
     fvgCooldown.value = settings.cooldownMinutes ?? 60;
+    fvgSlBuffer.value = settings.slBufferPercent ?? 0.15;
   } catch (err) { /* ignore */ }
 }
 
@@ -227,6 +229,7 @@ async function saveSettings() {
     intervalMinutes: parseInt(fvgInterval.value, 10) || 15,
     minGapPercent: parseFloat(fvgMinGap.value),
     cooldownMinutes: parseInt(fvgCooldown.value, 10),
+    slBufferPercent: parseFloat(fvgSlBuffer.value),
   };
 
   try {
