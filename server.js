@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { fetchCandles } = require('./lib/dataProvider');
-const { detectLatestFVG } = require('./lib/fvg');
+const { detectLatestFVG, computeTradeLevels } = require('./lib/fvg');
 
 const app = express();
 app.use(express.json());
@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS = {
   dataSource: 'twelvedata', // 'twelvedata' | 'metaapi'
   minGapPercent: 0.1, // skip gaps smaller than this % of price (noise filter)
   cooldownMinutes: 60, // minimum gap between two auto-signals for the same pair
+  slBufferPercent: 0.15, // SL padding beyond the gap edge, as % of price
 };
 
 function loadSettings() {
@@ -113,9 +114,15 @@ function buildFvgMessage(signal, fvg) {
     `📶 *Feed:* ${signal.dataSource === 'metaapi' ? 'MT5 Broker (MetaApi)' : signal.dataSource === 'yahoo' ? 'Yahoo Finance (Unofficial)' : 'Twelve Data'}`,
     `📐 *Gap Zone:* ${fvg.gapBottom} — ${fvg.gapTop}`,
     ``,
+    `🎯 *Entry:* ${signal.entry}`,
+    `🛑 *Stop Loss:* ${signal.sl}`,
+    `✅ *TP1 (1:1):* ${signal.tp1}`,
+    `✅ *TP2 (1:2):* ${signal.tp2}`,
+    `✅ *TP3 (1:3):* ${signal.tp3}`,
+    ``,
     `🕒 ${new Date(signal.createdAt).toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh' })}`,
     ``,
-    `_Auto-detected — សូមផ្ទៀងផ្ទាត់មុនចូល Trade_`,
+    `_Auto-detected — Entry/SL/TP គណនាដោយស្វ័យប្រវត្តិ ត្រូវផ្ទៀងផ្ទាត់មុនចូល Trade_`,
   ];
   return lines.join('\n');
 }
@@ -195,15 +202,17 @@ async function runAutoScan() {
       seenFvgKeys.add(key);
       found++;
 
+      const levels = computeTradeLevels(fvg, settings.slBufferPercent);
+
       const signal = {
         id: crypto.randomUUID(),
         pair,
         direction: fvg.type === 'bullish' ? 'BUY' : 'SELL',
-        entry: '-',
-        sl: '-',
-        tp1: '',
-        tp2: '',
-        tp3: '',
+        entry: String(levels.entry),
+        sl: String(levels.sl),
+        tp1: String(levels.tp1),
+        tp2: String(levels.tp2),
+        tp3: String(levels.tp3),
         note: `FVG ${fvg.type} zone: ${fvg.gapBottom} – ${fvg.gapTop} (${gapPercent.toFixed(2)}%)`,
         createdAt: Date.now(),
         status: 'pending',
@@ -328,7 +337,7 @@ app.get('/api/settings', requireAuth, (req, res) => {
 });
 
 app.post('/api/settings', requireAuth, (req, res) => {
-  const { autoScanEnabled, pairs, timeframe, intervalMinutes, dataSource, minGapPercent, cooldownMinutes } = req.body || {};
+  const { autoScanEnabled, pairs, timeframe, intervalMinutes, dataSource, minGapPercent, cooldownMinutes, slBufferPercent } = req.body || {};
   const settings = loadSettings();
 
   if (typeof autoScanEnabled === 'boolean') settings.autoScanEnabled = autoScanEnabled;
@@ -345,6 +354,7 @@ app.post('/api/settings', requireAuth, (req, res) => {
   if (dataSource && ['twelvedata', 'metaapi', 'yahoo'].includes(dataSource)) settings.dataSource = dataSource;
   if (minGapPercent !== undefined && minGapPercent !== '') settings.minGapPercent = Math.max(0, parseFloat(minGapPercent));
   if (cooldownMinutes !== undefined && cooldownMinutes !== '') settings.cooldownMinutes = Math.max(0, parseInt(cooldownMinutes, 10));
+  if (slBufferPercent !== undefined && slBufferPercent !== '') settings.slBufferPercent = Math.max(0, parseFloat(slBufferPercent));
 
   saveSettings(settings);
   scheduleScan();
