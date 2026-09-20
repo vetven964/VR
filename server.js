@@ -15,8 +15,15 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'changeme123';
 
-const DATA_FILE = path.join(__dirname, 'signals.json');
-const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+// DATA_DIR lets you point storage at a mounted persistent Volume (e.g. on
+// Railway: Settings → Volumes → mount at /data, then set DATA_DIR=/data).
+// Without a Volume, Railway's filesystem is ephemeral and this file resets
+// on every redeploy — fine for testing, but set a Volume for production use.
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+const DATA_FILE = path.join(DATA_DIR, 'signals.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 // ---------- Helpers: signals storage ----------
 function loadSignals() {
@@ -177,7 +184,13 @@ async function runAutoScan() {
     const effectiveSource = pairSourceOverride || settings.dataSource;
     try {
       const candles = await fetchCandles(pair, settings.timeframe, 30, effectiveSource);
-      const fvg = detectLatestFVG(candles);
+      // Drop the most recent candle — most providers include the current,
+      // still-forming candle as the last item. Detecting an FVG against an
+      // unclosed candle means the "gap" can vanish or shift before the
+      // candle actually closes, producing false signals. Only confirm
+      // gaps using fully-closed candles.
+      const closedCandles = candles.slice(0, -1);
+      const fvg = detectLatestFVG(closedCandles);
       if (!fvg) continue;
 
       const key = `${pair}_${fvg.time}_${fvg.type}`;
@@ -377,6 +390,14 @@ app.listen(PORT, () => {
   console.log(`✅ Signal Bot Dashboard running on port ${PORT}`);
   if (!BOT_TOKEN || !CHAT_ID) {
     console.warn('⚠️  BOT_TOKEN or CHAT_ID not set — signals will fail to send until configured in .env');
+  }
+  if (ADMIN_PASSWORD === 'changeme123') {
+    console.warn('🚨 SECURITY WARNING: ADMIN_PASSWORD is still the default "changeme123".');
+    console.warn('🚨 Anyone who finds your URL can log in and send fake signals. Set a real ADMIN_PASSWORD in your environment variables now.');
+  }
+  if (DATA_DIR === __dirname) {
+    console.warn('⚠️  DATA_DIR not set — signals.json/settings.json will be lost on the next redeploy.');
+    console.warn('⚠️  For production, mount a persistent Volume and set DATA_DIR to its path (see README).');
   }
   scheduleScan();
 });

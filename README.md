@@ -30,7 +30,14 @@ Web App សម្រាប់វាយបញ្ចូល Forex Trading Signal �
    - កំណត់ Timeframe និងចន្លោះពេលស្កេន (នាទី)
    - ចុច **"ស្កេនឥឡូវនេះ"** ដើម្បីសាកល្បងភ្លាមៗ
 
-**របៀបកំណត់ FVG:** ប្រើគោលការណ៍ ICT ៣ Candle — Bullish FVG កើតឡើងពេល high របស់ Candle ទី១ ទាបជាង low របស់ Candle ទី៣ (Bearish ដូចគ្នាបញ្ច្រាស)។ Signal ប្រភេទនេះនឹងបង្ហាញស្លាក **AUTO FVG** នៅក្នុងប្រវត្តិ, និងមិនមាន Entry/SL ជាក់លាក់ទេ (ត្រូវពិនិត្យ Gap Zone ដោយខ្លួនឯងមុន Trade)។
+**របៀបកំណត់ FVG:** ប្រើគោលការណ៍ ICT ៣ Candle — Bullish FVG កើតឡើងពេល high របស់ Candle ទី១ ទាបជាង low របស់ Candle ទី៣ (Bearish ដូចគ្នាបញ្ច្រាស)។ Signal ប្រភេទនេះនឹងបង្ហាញស្លាក **AUTO FVG** នៅក្នុងប្រវត្តិ។
+
+**Entry/SL/TP ស្វ័យប្រវត្តិ:** ប្រព័ន្ធគណនា Trade Plan ដោយស្វ័យប្រវត្តិពី Gap Zone តាមគោលការណ៍៖
+- **Entry** = ចំណុចកណ្តាលរបស់ Gap
+- **Stop Loss** = ជាប់ព្រំដែនឆ្ងាយរបស់ Gap បូក Buffer (កំណត់បានក្នុង Field "SL Buffer")
+- **TP1/TP2/TP3** = Risk:Reward តាមសមាមាត្រ 1:1, 1:2, 1:3
+
+⚠️ នេះជាការគណនាទម្រង់មេកានិចប៉ុណ្ណោះ **មិនមែនជាការណែនាំវិនិយោគទេ** — សូមពិនិត្យតម្លៃជាក់ស្តែងលើ MT5 ខ្លួនឯងជានិច្ចមុនចូល Trade។
 
 ---
 
@@ -141,6 +148,28 @@ telegram-signal-bot/
 ```
 
 ## សុវត្ថិភាព
-- ពាក្យសម្ងាត់ (`ADMIN_PASSWORD`) ការពារកុំឲ្យអ្នកផ្សេងចូលផ្ញើ Signal
+- ពាក្យសម្ងាត់ (`ADMIN_PASSWORD`) ការពារកុំឲ្យអ្នកផ្សេងចូលផ្ញើ Signal — **កុំប្រើ `changeme123` លំនាំដើម** Server នឹង Warning ក្នុង Logs ជានិច្ចរហូតដល់បងប្តូរ
 - `BOT_TOKEN` និង `CHAT_ID` ស្ថិតនៅក្នុង `.env` ប៉ុណ្ណោះ — កុំដាក់ Public ឬ Push ចូល GitHub ជា Public repo (ដាក់ `.env` ក្នុង `.gitignore`)
 - Session token នៅតែមាននៅក្នុង memory server — Restart server = ត្រូវចូល login ម្តងទៀត
+
+## Persistent Storage (សំខាន់សម្រាប់ Production)
+
+លំនាំដើម `signals.json` និង `settings.json` រក្សាទុកនៅ Folder តែមួយជាមួយកូដ — នៅលើ Railway/Render, Folder នេះជា **Ephemeral** (បាត់ពេល Redeploy ថ្មីម្តងទៀត)។ មានន័យថារាល់ពេល Upload កូដថ្មីទៅ GitHub, ការកំណត់ Auto-Scan និងប្រវត្តិ Signal របស់បងនឹង **Reset ត្រឡប់ទៅលំនាំដើម**។
+
+**ដំណោះស្រាយលើ Railway៖**
+1. ចូល Project → Tab **"Settings"** → Section **"Volumes"** → ចុច **"+ New Volume"**
+2. កំណត់ Mount Path ជា `/data`
+3. ទៅ Tab **"Variables"** → បន្ថែម `DATA_DIR=/data`
+4. Railway នឹង Restart ស្វ័យប្រវត្តិ — ចាប់ពីពេលនេះទិន្នន័យនឹងមិនបាត់ទៀត ទោះបី Redeploy ក៏ដោយ
+
+## ចំណុចមានកម្រិត (ស្គាល់ជាមុន)
+
+App នេះជា Prototype ងាយស្រួលប្រើ មិនមែនប្រព័ន្ធ Trading កម្រិតស្ថាប័នទេ។ ចំណុចខាងក្រោមជាការជ្រើសរើសរចនាឡើងវិញដោយចេតនា មិនមែនកំហុសទេ ប៉ុន្តែសំខាន់ត្រូវដឹង៖
+
+- **MetaApi មិនមែន Live Tick Feed** — វាទាញយក Historical Candles តាមចន្លោះពេលស្កេន (មិនមែន Streaming real-time real ដូច MT5 ខ្លួនវាផ្ទាល់ទេ) — គ្រប់គ្រាន់សម្រាប់កំណត់ FVG លើ Candle ដែលបិទរួច
+- **Min Gap 0.1%** ជាតម្លៃលំនាំដើម — សម្រាប់ Forex Major (EURUSD) អាចត្រូវបន្ថយចុះ (ឧ. 0.03-0.05%), ចំណែក Gold/BTC អាចខ្ពស់ជាងនេះកាន់តែសមរម្យ — សូមកែតាមទ្រព្យនីមួយៗ
+- **SL Buffer ជា % នៃតម្លៃ** មិនមែន ATR/Volatility-based ទេ — សាមញ្ញជាង ប៉ុន្តែមិនបត់បែនតាម Volatility ជាក់ស្តែងទេ
+- **Auto-Scan មិនមាន ICT Confirmation ពេញលេញ** (Liquidity Sweep → Market Structure Shift → FVG) — ស្កេនតែ FVG ៣-Candle ធម្មតា ជា Filter បឋមប៉ុណ្ណោះ មិនមែន Strategy ពេញលេញទេ
+- **XAUUSD/Symbol Name** ត្រូវផ្គូផ្គងនឹងឈ្មោះ Broker ជាក់ស្តែង ជាពិសេសពេលប្រើ MetaApi
+
+បើចង់កែលម្អចំណុចទាំងនេះ (ឧ. បន្ថែម ATR-based SL, ឬ ICT Confirmation Logic) អាចប្រាប់ខ្ញុំបន្ថែមបាន។
