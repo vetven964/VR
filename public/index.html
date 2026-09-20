@@ -102,6 +102,17 @@
         </div>
         <div class="row">
           <div class="field">
+            <label>ប្រភពទិន្នន័យតម្លៃ (Data Source)</label>
+            <select id="fvgDataSource">
+              <option value="twelvedata">Twelve Data (ទូទៅ)</option>
+              <option value="metaapi">MT5 Broker តាម MetaApi (ត្រូវគ្នាបានពិតប្រាកដ)</option>
+              <option value="yahoo">Yahoo Finance (Unofficial — សម្រាប់ CME Futures ដូចជា GC=F)</option>
+            </select>
+          </div>
+        </div>
+        <p class="fvg-hint">💡 សម្រាប់ Gold Futures (CME): បន្ថែម <code>GC=F:yahoo</code> ក្នុង Pairs ខាងក្រោម ដើម្បីប្រើ Yahoo សម្រាប់តែ Pair នេះ ខណៈ Pair ផ្សេងៗនៅតែប្រើប្រភពខាងលើ</p>
+        <div class="row">
+          <div class="field">
             <label>Timeframe</label>
             <select id="fvgTimeframe">
               <option value="5min">5 នាទី</option>
@@ -114,6 +125,16 @@
           <div class="field">
             <label>ស្កេនរៀងរាល់ (នាទី)</label>
             <input id="fvgInterval" type="number" min="5" placeholder="15" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Gap អប្បបរមា (% នៃតម្លៃ)</label>
+            <input id="fvgMinGap" type="number" step="0.01" min="0" placeholder="0.1" />
+          </div>
+          <div class="field">
+            <label>រយៈពេលសម្រាក ក្នុង Pair ដដែល (នាទី)</label>
+            <input id="fvgCooldown" type="number" min="0" placeholder="60" />
           </div>
         </div>
 

@@ -189,8 +189,11 @@ refreshBtn.addEventListener('click', loadHistory);
 // ---------- Auto-Scan FVG settings ----------
 const autoScanToggle = document.getElementById('autoScanToggle');
 const fvgPairs = document.getElementById('fvgPairs');
+const fvgDataSource = document.getElementById('fvgDataSource');
 const fvgTimeframe = document.getElementById('fvgTimeframe');
 const fvgInterval = document.getElementById('fvgInterval');
+const fvgMinGap = document.getElementById('fvgMinGap');
+const fvgCooldown = document.getElementById('fvgCooldown');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const scanNowBtn = document.getElementById('scanNowBtn');
 const fvgMessage = document.getElementById('fvgMessage');
@@ -202,8 +205,11 @@ async function loadSettings() {
     const settings = await resp.json();
     autoScanToggle.checked = !!settings.autoScanEnabled;
     fvgPairs.value = (settings.pairs || []).join(', ');
+    fvgDataSource.value = settings.dataSource || 'twelvedata';
     fvgTimeframe.value = settings.timeframe || '15min';
     fvgInterval.value = settings.intervalMinutes || 15;
+    fvgMinGap.value = settings.minGapPercent ?? 0.1;
+    fvgCooldown.value = settings.cooldownMinutes ?? 60;
   } catch (err) { /* ignore */ }
 }
 
@@ -216,8 +222,11 @@ async function saveSettings() {
   const payload = {
     autoScanEnabled: autoScanToggle.checked,
     pairs,
+    dataSource: fvgDataSource.value,
     timeframe: fvgTimeframe.value,
     intervalMinutes: parseInt(fvgInterval.value, 10) || 15,
+    minGapPercent: parseFloat(fvgMinGap.value),
+    cooldownMinutes: parseInt(fvgCooldown.value, 10),
   };
 
   try {
@@ -248,7 +257,7 @@ async function scanNow() {
     const resp = await fetch('/api/scan-now', { method: 'POST', headers: { 'x-auth-token': authToken } });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'ស្កេនមិនបាន');
-    fvgMessage.textContent = `✅ ស្កេនរួច — រកឃើញ FVG ថ្មី ${data.found} (ក្នុងចំណោម ${data.scanned} pair)`;
+    fvgMessage.textContent = `✅ ស្កេនរួច — រកឃើញ FVG ថ្មី ${data.found} (រំលង ${data.skipped || 0}, ក្នុងចំណោម ${data.scanned} pair)`;
     fvgMessage.classList.add('success');
     loadHistory();
   } catch (err) {
