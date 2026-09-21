@@ -55,6 +55,9 @@ const DEFAULT_SETTINGS = {
   slBufferPercent: 0.15, // SL padding beyond the gap edge, as % of price
   strategy: 'fvg', // 'fvg' (simple 3-candle FVG) | 'ict' (full ICT SMC sequence)
   requireMTF: false, // ICT strategy only: require 1h/15m/5m EMA50 trend alignment (3x extra API calls per pair)
+  requireRetest: true, // ICT strategy only: wait for a pullback + rejection wick before firing (vs. firing right at displacement)
+  retestBars: 20, // ICT strategy only: give up waiting for the retest after this many candles
+  rejectWickRatio: 0.5, // ICT strategy only: rejection wick must be >= this fraction of the candle's range
 };
 
 function loadSettings() {
@@ -181,7 +184,7 @@ function buildIctMessage(signal) {
     `🛑 *Stop Loss:* ${signal.sl}`,
     `✅ *TP1:* ${signal.tp1}`,
     ``,
-    `📝 Sweep → MSS → BOS → Displacement → POI confirmed`,
+    `📝 ${signal.note}`,
     ``,
     `🕒 ${new Date(signal.createdAt).toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh' })}`,
     ``,
@@ -222,7 +225,11 @@ async function runAutoScan() {
         // ICT needs more history for swings/liquidity/ATR to warm up properly.
         const candles = await fetchCandles(pair, settings.timeframe, 150, effectiveSource);
         const closedCandles = candles.slice(0, -1); // drop still-forming candle
-        const result = runIctEngine(closedCandles);
+        const result = runIctEngine(closedCandles, {
+          requireRetest: settings.requireRetest,
+          retestBars: settings.retestBars,
+          rejectWickRatio: settings.rejectWickRatio,
+        });
         if (!result) continue;
 
         const key = `${pair}_${result.time}_${result.direction}_ict`;
@@ -262,7 +269,9 @@ async function runAutoScan() {
           tp1: String(round(result.tp1)),
           tp2: '',
           tp3: '',
-          note: `ICT SMC — Sweep → MSS → BOS → Displacement confirmed`,
+          note: result.retestConfirmed
+            ? `ICT SMC — Sweep → MSS → BOS → Displacement → Retest+Reject confirmed`
+            : `ICT SMC — Sweep → MSS → BOS → Displacement confirmed`,
           createdAt: Date.now(),
           status: 'pending',
           source: 'auto-ict',
@@ -458,7 +467,7 @@ app.get('/api/settings', requireAuth, (req, res) => {
 });
 
 app.post('/api/settings', requireAuth, (req, res) => {
-  const { autoScanEnabled, pairs, timeframe, intervalMinutes, dataSource, minGapPercent, cooldownMinutes, slBufferPercent, strategy, requireMTF } = req.body || {};
+  const { autoScanEnabled, pairs, timeframe, intervalMinutes, dataSource, minGapPercent, cooldownMinutes, slBufferPercent, strategy, requireMTF, requireRetest, retestBars, rejectWickRatio } = req.body || {};
   const settings = loadSettings();
 
   if (typeof autoScanEnabled === 'boolean') settings.autoScanEnabled = autoScanEnabled;
@@ -478,6 +487,9 @@ app.post('/api/settings', requireAuth, (req, res) => {
   if (slBufferPercent !== undefined && slBufferPercent !== '') settings.slBufferPercent = Math.max(0, parseFloat(slBufferPercent));
   if (strategy && ['fvg', 'ict'].includes(strategy)) settings.strategy = strategy;
   if (typeof requireMTF === 'boolean') settings.requireMTF = requireMTF;
+  if (typeof requireRetest === 'boolean') settings.requireRetest = requireRetest;
+  if (retestBars !== undefined && retestBars !== '') settings.retestBars = Math.max(1, parseInt(retestBars, 10));
+  if (rejectWickRatio !== undefined && rejectWickRatio !== '') settings.rejectWickRatio = Math.min(1, Math.max(0, parseFloat(rejectWickRatio)));
 
   saveSettings(settings);
   scheduleScan();

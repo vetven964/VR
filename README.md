@@ -61,6 +61,17 @@ Web App សម្រាប់វាយបញ្ចូល Forex Trading Signal �
 - TP មានតែ TP1 មួយប៉ុណ្ណោះ (ដូច Pine Script ដើម) — មិនមាន TP2/TP3 ទេ
 - Entry/SL/TP1 គណនាពី Market Structure ជាក់ស្តែង (Swing High/Low + Liquidity + ATR) មិនមែនគ្រាន់តែពីកណ្តាល Gap ទេ
 
+### Retest + Rejection Confirmation (State ទី ៥ បន្ថែម)
+
+ជម្រើសបន្ថែមពី Sequence ដើមរបស់ Pine Script — ជំនួសឲ្យផ្ញើ Signal ភ្លាមៗពេល Displacement Candle ចប់ ប្រព័ន្ធនឹង**រង់ចាំ Price ត្រឡប់មកសាកល្បង (Retest)** តំបន់ដែលបាន Break (POI/FVG Zone) ជាថ្មី ហើយត្រូវការ **Candle បដិសេធ (Rejection Wick)** ច្បាស់លាស់ ទើបផ្ញើ Signal ពិតប្រាកដ — ដូចរបៀបដែល Trader ជំនាញធ្វើដើម្បីបាន Entry មានហានិភ័យទាបជាង។
+
+**ការកំណត់ (នៅពេលជ្រើស Strategy "ICT SMC")៖**
+- **"ទាមទារ Retest + Rejection Wick"** — បើក/បិទ Feature នេះ (លំនាំដើម: បើក)
+- **"រង់ចាំ Retest អតិបរមា (Candle)"** — បើលើសចំនួននេះ Price មិនទាន់ត្រឡប់មក Sequence នឹង Reset (លំនាំដើម 20 Candle)
+- **"Rejection Wick អប្បបរមា"** — Wick ត្រូវធំជាងភាគរយនេះនៃ Candle Range ទាំងមូល ទើបចាត់ទុកជា Rejection ពិតប្រាកដ (លំនាំដើម 0.5 = 50%)
+
+⚠️ បើបិទ Feature នេះ ("ទាមទារ Retest" = Off) ប្រព័ន្ធនឹងត្រឡប់ទៅឥរិយាបថដើម — ផ្ញើ Signal ភ្លាមៗពេល Displacement ចប់ ដូច Pine Script ដើម។
+
 ⚠️ **សំខាន់៖** នេះជា JavaScript Port ពី Pine Script ដោយព្យាយាមរក្សាតក្កវិជ្ជាដូចដើមឲ្យបានច្រើនតាមដែលអាចធ្វើទៅបាន — មិនមែនការចម្លងផ្ទាល់ 100% នៃ Pine Runtime ទេ (ជាពិសេស Pivot Detection និង MTF អាចមានភាពខុសគ្នាបន្តិចបន្តួង)។ សូមប្រៀបធៀបលទ្ធផលជាមួយ Indicator ដើមលើ TradingView ជាទៀងទាត់ ជាពិសេសដំណាក់កាលដំបូងៗនៃការប្រើប្រាស់។
 
 ---
