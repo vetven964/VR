@@ -5,6 +5,8 @@ const path = require('path');
 const crypto = require('crypto');
 const { fetchCandles } = require('./lib/dataProvider');
 const { detectLatestFVG, computeTradeLevels } = require('./lib/fvg');
+const { getCurrentSession, getSessionEmoji } = require('./lib/session');
+const { runIctEngine, checkMTFAlignment } = require('./lib/ictSignal');
 
 const app = express();
 app.use(express.json());
@@ -51,6 +53,8 @@ const DEFAULT_SETTINGS = {
   minGapPercent: 0.1, // skip gaps smaller than this % of price (noise filter)
   cooldownMinutes: 60, // minimum gap between two auto-signals for the same pair
   slBufferPercent: 0.15, // SL padding beyond the gap edge, as % of price
+  strategy: 'fvg', // 'fvg' (simple 3-candle FVG) | 'ict' (full ICT SMC sequence)
+  requireMTF: false, // ICT strategy only: require 1h/15m/5m EMA50 trend alignment (3x extra API calls per pair)
 };
 
 function loadSettings() {
@@ -112,11 +116,15 @@ function buildTelegramMessage(signal) {
 
 function buildFvgMessage(signal, fvg) {
   const dirLabel = signal.direction === 'BUY' ? '🟢 BUY (Bullish FVG)' : '🔴 SELL (Bearish FVG)';
+  const sessionLabel = signal.session && signal.session !== 'NONE'
+    ? `${getSessionEmoji(signal.session)} *Session:* ${signal.session}`
+    : `⚪ *Session:* Outside NY/Asia/London window`;
   const lines = [
     `📊 *AUTO FVG SIGNAL* 📊`,
     ``,
     `💱 *Pair:* ${signal.pair}`,
     `${dirLabel}`,
+    sessionLabel,
     `⏱ *Timeframe:* ${signal.timeframe}`,
     `📶 *Feed:* ${signal.dataSource === 'metaapi' ? 'MT5 Broker (MetaApi)' : signal.dataSource === 'yahoo' ? 'Yahoo Finance (Unofficial)' : 'Twelve Data'}`,
     `📐 *Gap Zone:* ${fvg.gapBottom} — ${fvg.gapTop}`,
@@ -155,15 +163,42 @@ async function sendToTelegram(text) {
   return data;
 }
 
+function buildIctMessage(signal) {
+  const dirLabel = signal.direction === 'BUY' ? '🟢 BUY (ទិញ)' : '🔴 SELL (លក់)';
+  const sessionLabel = signal.session && signal.session !== 'NONE'
+    ? `${getSessionEmoji(signal.session)} *Session:* ${signal.session}`
+    : `⚪ *Session:* Outside NY/Asia/London window`;
+  const lines = [
+    `🎯 *ICT SMC SIGNAL* 🎯`,
+    ``,
+    `💱 *Pair:* ${signal.pair}`,
+    `${dirLabel}`,
+    sessionLabel,
+    `⏱ *Timeframe:* ${signal.timeframe}`,
+    `📶 *Feed:* ${signal.dataSource === 'metaapi' ? 'MT5 Broker (MetaApi)' : signal.dataSource === 'yahoo' ? 'Yahoo Finance (Unofficial)' : 'Twelve Data'}`,
+    ``,
+    `🎯 *Entry:* ${signal.entry}`,
+    `🛑 *Stop Loss:* ${signal.sl}`,
+    `✅ *TP1:* ${signal.tp1}`,
+    ``,
+    `📝 Sweep → MSS → BOS → Displacement → POI confirmed`,
+    ``,
+    `🕒 ${new Date(signal.createdAt).toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh' })}`,
+    ``,
+    `_Auto-detected (ICT SMC) — ត្រូវផ្ទៀងផ្ទាត់មុនចូល Trade_`,
+  ];
+  return lines.join('\n');
+}
+
 // ---------- Auto FVG scan engine ----------
-// Dedupe key set, seeded from history so a restart doesn't resend old FVGs.
+// Dedupe key set, seeded from history so a restart doesn't resend old signals.
 const seenFvgKeys = new Set();
 // Last auto-signal time per pair, for cooldown throttling.
 const lastSentAt = {};
 (function seedScanState() {
   loadSignals().forEach((s) => {
-    if (s.source === 'auto-fvg' && s.fvgKey) seenFvgKeys.add(s.fvgKey);
-    if (s.source === 'auto-fvg' && s.status === 'sent') {
+    if ((s.source === 'auto-fvg' || s.source === 'auto-ict') && s.fvgKey) seenFvgKeys.add(s.fvgKey);
+    if ((s.source === 'auto-fvg' || s.source === 'auto-ict') && s.status === 'sent') {
       if (!lastSentAt[s.pair] || s.createdAt > lastSentAt[s.pair]) {
         lastSentAt[s.pair] = s.createdAt;
       }
@@ -183,6 +218,77 @@ async function runAutoScan() {
     const { symbol: pair, source: pairSourceOverride } = parsePairEntry(rawPair);
     const effectiveSource = pairSourceOverride || settings.dataSource;
     try {
+      if (settings.strategy === 'ict') {
+        // ICT needs more history for swings/liquidity/ATR to warm up properly.
+        const candles = await fetchCandles(pair, settings.timeframe, 150, effectiveSource);
+        const closedCandles = candles.slice(0, -1); // drop still-forming candle
+        const result = runIctEngine(closedCandles);
+        if (!result) continue;
+
+        const key = `${pair}_${result.time}_${result.direction}_ict`;
+        if (seenFvgKeys.has(key)) continue;
+
+        if (settings.requireMTF) {
+          const [htf, mtf, ltf] = await Promise.all([
+            fetchCandles(pair, '1h', 60, effectiveSource),
+            fetchCandles(pair, '15min', 60, effectiveSource),
+            fetchCandles(pair, '5min', 60, effectiveSource),
+          ]);
+          const align = checkMTFAlignment(htf, mtf, ltf);
+          const ok = result.direction === 'BUY' ? align.bull : align.bear;
+          if (!ok) { seenFvgKeys.add(key); skipped++; continue; }
+        }
+
+        const now = Date.now();
+        if (cooldownMs > 0 && lastSentAt[pair] && now - lastSentAt[pair] < cooldownMs) {
+          seenFvgKeys.add(key);
+          skipped++;
+          continue;
+        }
+
+        seenFvgKeys.add(key);
+        found++;
+
+        const decimals = result.entry >= 100 ? 2 : result.entry >= 1 ? 4 : 6;
+        const round = (n) => Number(n.toFixed(decimals));
+        const session = getCurrentSession();
+
+        const signal = {
+          id: crypto.randomUUID(),
+          pair,
+          direction: result.direction,
+          entry: String(round(result.entry)),
+          sl: String(round(result.sl)),
+          tp1: String(round(result.tp1)),
+          tp2: '',
+          tp3: '',
+          note: `ICT SMC — Sweep → MSS → BOS → Displacement confirmed`,
+          createdAt: Date.now(),
+          status: 'pending',
+          source: 'auto-ict',
+          fvgKey: key,
+          timeframe: settings.timeframe,
+          dataSource: effectiveSource,
+          session,
+        };
+
+        const message = buildIctMessage(signal);
+        try {
+          await sendToTelegram(message);
+          signal.status = 'sent';
+          lastSentAt[pair] = signal.createdAt;
+        } catch (err) {
+          signal.status = 'failed';
+          signal.error = err.message;
+        }
+
+        const signals = loadSignals();
+        signals.push(signal);
+        saveSignals(signals);
+        continue;
+      }
+
+      // ---------- default strategy: simple 3-candle FVG ----------
       const candles = await fetchCandles(pair, settings.timeframe, 30, effectiveSource);
       // Drop the most recent candle — most providers include the current,
       // still-forming candle as the last item. Detecting an FVG against an
@@ -216,6 +322,7 @@ async function runAutoScan() {
       found++;
 
       const levels = computeTradeLevels(fvg, settings.slBufferPercent);
+      const session = getCurrentSession();
 
       const signal = {
         id: crypto.randomUUID(),
@@ -233,6 +340,7 @@ async function runAutoScan() {
         fvgKey: key,
         timeframe: settings.timeframe,
         dataSource: effectiveSource,
+        session,
       };
 
       const message = buildFvgMessage(signal, fvg);
@@ -249,7 +357,7 @@ async function runAutoScan() {
       signals.push(signal);
       saveSignals(signals);
     } catch (err) {
-      console.error(`⚠️  FVG scan error for ${pair}:`, err.message);
+      console.error(`⚠️  Scan error for ${pair}:`, err.message);
     }
   }
   return { scanned: settings.pairs.length, found, skipped };
@@ -350,7 +458,7 @@ app.get('/api/settings', requireAuth, (req, res) => {
 });
 
 app.post('/api/settings', requireAuth, (req, res) => {
-  const { autoScanEnabled, pairs, timeframe, intervalMinutes, dataSource, minGapPercent, cooldownMinutes, slBufferPercent } = req.body || {};
+  const { autoScanEnabled, pairs, timeframe, intervalMinutes, dataSource, minGapPercent, cooldownMinutes, slBufferPercent, strategy, requireMTF } = req.body || {};
   const settings = loadSettings();
 
   if (typeof autoScanEnabled === 'boolean') settings.autoScanEnabled = autoScanEnabled;
@@ -368,6 +476,8 @@ app.post('/api/settings', requireAuth, (req, res) => {
   if (minGapPercent !== undefined && minGapPercent !== '') settings.minGapPercent = Math.max(0, parseFloat(minGapPercent));
   if (cooldownMinutes !== undefined && cooldownMinutes !== '') settings.cooldownMinutes = Math.max(0, parseInt(cooldownMinutes, 10));
   if (slBufferPercent !== undefined && slBufferPercent !== '') settings.slBufferPercent = Math.max(0, parseFloat(slBufferPercent));
+  if (strategy && ['fvg', 'ict'].includes(strategy)) settings.strategy = strategy;
+  if (typeof requireMTF === 'boolean') settings.requireMTF = requireMTF;
 
   saveSettings(settings);
   scheduleScan();

@@ -39,6 +39,30 @@ Web App សម្រាប់វាយបញ្ចូល Forex Trading Signal �
 
 ⚠️ នេះជាការគណនាទម្រង់មេកានិចប៉ុណ្ណោះ **មិនមែនជាការណែនាំវិនិយោគទេ** — សូមពិនិត្យតម្លៃជាក់ស្តែងលើ MT5 ខ្លួនឯងជានិច្ចមុនចូល Trade។
 
+**Session Tag:** រាល់ Auto FVG Signal នឹងបង្ហាញ Session ជួញដូរបច្ចុប្បន្ន (🟣 New York 00:00–03:00, 🔵 Asia 07:00–10:00, 🟠 London 12:00–15:00 — ម៉ោង Phnom Penh) ស្របតាមគោលការណ៍ដូចគ្នានឹង Indicator TradingView "V-TRADE AI Session Engine"។ នេះគ្រាន់តែជា Label ព័ត៌មានប៉ុណ្ណោះ — Auto-Scan នៅតែស្កេនគ្រប់ម៉ោង មិនកំណត់តែក្នុង Session ទេ។
+
+---
+
+## ជំហានទី ១.៨៖ (ស្រេចចិត្ត) ICT SMC Strategy ពេញលេញ
+
+ជា Alternative ចំពោះ FVG សាមញ្ញ — ស្ថិតលើកូដពី Pine Script Indicator "V-TRADE AI — ICT SMC V8.1 KHMER PRO" ដែលទាមទារលំដាប់ខាងក្រោមទាំងអស់មុននឹងចេញ Signal៖
+
+**Liquidity Sweep → MSS (Market Structure Shift) → BOS (Break of Structure) → Displacement Candle → POI (FVG/Displacement) → Structural SL/TP1 (ផ្អែកលើ Swing High/Low និង Liquidity, ATR-based)**
+
+នេះស្មុគស្មាញ និងជ្រើសរើសខ្លាំងជាង FVG ធម្មតា — Signal នឹងកម្រចេញជាង តែមានគុណភាពខ្ពស់ជាង។
+
+**របៀបប្រើ៖**
+1. នៅ Card "🤖 Auto-Scan FVG" → Field **"ប្រភេទយុទ្ធសាស្ត្រ (Strategy)"** ប្តូរទៅ **"ICT SMC ពេញលេញ"**
+2. (ស្រេចចិត្ត) ជ្រើស **"ទាមទារ MTF Confirmation"** ដើម្បីឲ្យ Signal ត្រូវផ្គូផ្គងនឹង Trend នៅ 1h/15m/5m EMA50 ទាំងអស់ (បង្កើន API Call 3ដងក្នុងមួយ Pair ក្នុងមួយស្កេន — ប្រយ័ត្ន Rate Limit របស់ Twelve Data Free Tier)
+3. ចុច "រក្សាទុក"
+
+**លក្ខណៈពិសេស៖**
+- Signal ប្រភេទនេះមាន Badge **"ICT SMC"** ខុសពី "AUTO FVG"
+- TP មានតែ TP1 មួយប៉ុណ្ណោះ (ដូច Pine Script ដើម) — មិនមាន TP2/TP3 ទេ
+- Entry/SL/TP1 គណនាពី Market Structure ជាក់ស្តែង (Swing High/Low + Liquidity + ATR) មិនមែនគ្រាន់តែពីកណ្តាល Gap ទេ
+
+⚠️ **សំខាន់៖** នេះជា JavaScript Port ពី Pine Script ដោយព្យាយាមរក្សាតក្កវិជ្ជាដូចដើមឲ្យបានច្រើនតាមដែលអាចធ្វើទៅបាន — មិនមែនការចម្លងផ្ទាល់ 100% នៃ Pine Runtime ទេ (ជាពិសេស Pivot Detection និង MTF អាចមានភាពខុសគ្នាបន្តិចបន្តួង)។ សូមប្រៀបធៀបលទ្ធផលជាមួយ Indicator ដើមលើ TradingView ជាទៀងទាត់ ជាពិសេសដំណាក់កាលដំបូងៗនៃការប្រើប្រាស់។
+
 ---
 
 ## ជំហានទី ១.៦៖ (ស្រេចចិត្ត) ចង់បានតម្លៃដូច MT5 Broker បង 100%
@@ -169,7 +193,7 @@ App នេះជា Prototype ងាយស្រួលប្រើ មិនម�
 - **MetaApi មិនមែន Live Tick Feed** — វាទាញយក Historical Candles តាមចន្លោះពេលស្កេន (មិនមែន Streaming real-time real ដូច MT5 ខ្លួនវាផ្ទាល់ទេ) — គ្រប់គ្រាន់សម្រាប់កំណត់ FVG លើ Candle ដែលបិទរួច
 - **Min Gap 0.1%** ជាតម្លៃលំនាំដើម — សម្រាប់ Forex Major (EURUSD) អាចត្រូវបន្ថយចុះ (ឧ. 0.03-0.05%), ចំណែក Gold/BTC អាចខ្ពស់ជាងនេះកាន់តែសមរម្យ — សូមកែតាមទ្រព្យនីមួយៗ
 - **SL Buffer ជា % នៃតម្លៃ** មិនមែន ATR/Volatility-based ទេ — សាមញ្ញជាង ប៉ុន្តែមិនបត់បែនតាម Volatility ជាក់ស្តែងទេ
-- **Auto-Scan មិនមាន ICT Confirmation ពេញលេញ** (Liquidity Sweep → Market Structure Shift → FVG) — ស្កេនតែ FVG ៣-Candle ធម្មតា ជា Filter បឋមប៉ុណ្ណោះ មិនមែន Strategy ពេញលេញទេ
+- **Auto-Scan (FVG Strategy) មិនមាន ICT Confirmation ពេញលេញ** — ស្កេនតែ FVG ៣-Candle ធម្មតា ជា Filter បឋមប៉ុណ្ណោះ។ **ប្រសិនបើចង់បាន Confirmation ពេញលេញ (Sweep → MSS → BOS → Displacement) សូមប្តូរទៅ Strategy "ICT SMC"** ដូចរៀបរាប់ខាងលើ
 - **XAUUSD/Symbol Name** ត្រូវផ្គូផ្គងនឹងឈ្មោះ Broker ជាក់ស្តែង ជាពិសេសពេលប្រើ MetaApi
 
 បើចង់កែលម្អចំណុចទាំងនេះ (ឧ. បន្ថែម ATR-based SL, ឬ ICT Confirmation Logic) អាចប្រាប់ខ្ញុំបន្ថែមបាន។
