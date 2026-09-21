@@ -96,6 +96,23 @@
 
         <div class="row">
           <div class="field">
+            <label>ប្រភេទយុទ្ធសាស្ត្រ (Strategy)</label>
+            <select id="fvgStrategy">
+              <option value="fvg">FVG ធម្មតា (3-Candle Gap)</option>
+              <option value="ict">ICT SMC ពេញលេញ (Sweep → MSS → BOS → Displacement)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" id="mtfRow" style="display:none;">
+          <div class="field checkbox-field">
+            <label class="checkbox-label">
+              <input type="checkbox" id="fvgRequireMTF" />
+              ទាមទារ MTF Confirmation (1h/15m/5m EMA50 — ត្រូវការ API Call បន្ថែម 3ដង/Pair)
+            </label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
             <label>Pairs (ខណ្ឌដោយសញ្ញា Comma)</label>
             <input id="fvgPairs" type="text" placeholder="EURUSD, GBPUSD, XAUUSD" />
           </div>

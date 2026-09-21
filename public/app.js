@@ -152,6 +152,8 @@ function renderHistory(signals) {
             <span>${escapeHtml(s.pair)}</span>
             <span class="hi-dir ${dirClass}">${s.direction}</span>
             ${s.source === 'auto-fvg' ? '<span class="source-tag">AUTO FVG</span>' : ''}
+            ${s.source === 'auto-ict' ? '<span class="source-tag ict-tag">ICT SMC</span>' : ''}
+            ${s.session && s.session !== 'NONE' ? `<span class="source-tag session-tag">${escapeHtml(s.session)}</span>` : ''}
           </div>
           <div class="hi-details">
             Entry ${escapeHtml(s.entry)} · SL ${escapeHtml(s.sl)}${tps ? ' · TP ' + escapeHtml(tps) : ''}
@@ -195,6 +197,9 @@ const fvgInterval = document.getElementById('fvgInterval');
 const fvgMinGap = document.getElementById('fvgMinGap');
 const fvgCooldown = document.getElementById('fvgCooldown');
 const fvgSlBuffer = document.getElementById('fvgSlBuffer');
+const fvgStrategy = document.getElementById('fvgStrategy');
+const fvgRequireMTF = document.getElementById('fvgRequireMTF');
+const mtfRow = document.getElementById('mtfRow');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const scanNowBtn = document.getElementById('scanNowBtn');
 const fvgMessage = document.getElementById('fvgMessage');
@@ -212,6 +217,9 @@ async function loadSettings() {
     fvgMinGap.value = settings.minGapPercent ?? 0.1;
     fvgCooldown.value = settings.cooldownMinutes ?? 60;
     fvgSlBuffer.value = settings.slBufferPercent ?? 0.15;
+    fvgStrategy.value = settings.strategy || 'fvg';
+    fvgRequireMTF.checked = !!settings.requireMTF;
+    mtfRow.style.display = fvgStrategy.value === 'ict' ? '' : 'none';
   } catch (err) { /* ignore */ }
 }
 
@@ -230,6 +238,8 @@ async function saveSettings() {
     minGapPercent: parseFloat(fvgMinGap.value),
     cooldownMinutes: parseInt(fvgCooldown.value, 10),
     slBufferPercent: parseFloat(fvgSlBuffer.value),
+    strategy: fvgStrategy.value,
+    requireMTF: fvgRequireMTF.checked,
   };
 
   try {
@@ -274,6 +284,9 @@ async function scanNow() {
 
 saveSettingsBtn.addEventListener('click', saveSettings);
 scanNowBtn.addEventListener('click', scanNow);
+fvgStrategy.addEventListener('change', () => {
+  mtfRow.style.display = fvgStrategy.value === 'ict' ? '' : 'none';
+});
 
 // ---------- Init ----------
 if (authToken) {
