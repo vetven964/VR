@@ -200,6 +200,11 @@ const fvgSlBuffer = document.getElementById('fvgSlBuffer');
 const fvgStrategy = document.getElementById('fvgStrategy');
 const fvgRequireMTF = document.getElementById('fvgRequireMTF');
 const mtfRow = document.getElementById('mtfRow');
+const fvgRequireRetest = document.getElementById('fvgRequireRetest');
+const retestRow = document.getElementById('retestRow');
+const retestParamsRow = document.getElementById('retestParamsRow');
+const fvgRetestBars = document.getElementById('fvgRetestBars');
+const fvgRejectWick = document.getElementById('fvgRejectWick');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const scanNowBtn = document.getElementById('scanNowBtn');
 const fvgMessage = document.getElementById('fvgMessage');
@@ -219,7 +224,13 @@ async function loadSettings() {
     fvgSlBuffer.value = settings.slBufferPercent ?? 0.15;
     fvgStrategy.value = settings.strategy || 'fvg';
     fvgRequireMTF.checked = !!settings.requireMTF;
-    mtfRow.style.display = fvgStrategy.value === 'ict' ? '' : 'none';
+    fvgRequireRetest.checked = settings.requireRetest !== false;
+    fvgRetestBars.value = settings.retestBars ?? 20;
+    fvgRejectWick.value = settings.rejectWickRatio ?? 0.5;
+    const isIct = fvgStrategy.value === 'ict';
+    mtfRow.style.display = isIct ? '' : 'none';
+    retestRow.style.display = isIct ? '' : 'none';
+    retestParamsRow.style.display = isIct ? '' : 'none';
   } catch (err) { /* ignore */ }
 }
 
@@ -240,6 +251,9 @@ async function saveSettings() {
     slBufferPercent: parseFloat(fvgSlBuffer.value),
     strategy: fvgStrategy.value,
     requireMTF: fvgRequireMTF.checked,
+    requireRetest: fvgRequireRetest.checked,
+    retestBars: parseInt(fvgRetestBars.value, 10),
+    rejectWickRatio: parseFloat(fvgRejectWick.value),
   };
 
   try {
@@ -285,7 +299,10 @@ async function scanNow() {
 saveSettingsBtn.addEventListener('click', saveSettings);
 scanNowBtn.addEventListener('click', scanNow);
 fvgStrategy.addEventListener('change', () => {
-  mtfRow.style.display = fvgStrategy.value === 'ict' ? '' : 'none';
+  const isIct = fvgStrategy.value === 'ict';
+  mtfRow.style.display = isIct ? '' : 'none';
+  retestRow.style.display = isIct ? '' : 'none';
+  retestParamsRow.style.display = isIct ? '' : 'none';
 });
 
 // ---------- Init ----------

@@ -111,6 +111,24 @@
             </label>
           </div>
         </div>
+        <div class="row" id="retestRow" style="display:none;">
+          <div class="field checkbox-field">
+            <label class="checkbox-label">
+              <input type="checkbox" id="fvgRequireRetest" />
+              ទាមទារ Retest + Rejection Wick (រង់ចាំ Price ត្រឡប់មកសាកល្បង Zone រួចមាន Candle បដិសេធ មុនផ្ញើ Signal)
+            </label>
+          </div>
+        </div>
+        <div class="row" id="retestParamsRow" style="display:none;">
+          <div class="field">
+            <label>រង់ចាំ Retest អតិបរមា (Candle)</label>
+            <input id="fvgRetestBars" type="number" min="1" placeholder="20" />
+          </div>
+          <div class="field">
+            <label>Rejection Wick អប្បបរមា (% នៃ Candle Range)</label>
+            <input id="fvgRejectWick" type="number" step="0.05" min="0" max="1" placeholder="0.5" />
+          </div>
+        </div>
         <div class="row">
           <div class="field">
             <label>Pairs (ខណ្ឌដោយសញ្ញា Comma)</label>
